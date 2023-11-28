@@ -1,0 +1,6 @@
+COM S 352 Project 2
+Author: Corbin Graham
+
+- Updated makefile to support "make clean"
+- Updated makefile to add .exe extension for journal
+- Added Readme
