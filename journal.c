@@ -1,32 +1,194 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <stdlib.h> // TODO: Remove
 #include "journal.h"
+
+#define NAME(x) #x // Return the name of a variable
+
+/**
+ * @brief Asyncronous Request Buffer
+ * Name, Buffer[MAX_BUFFER], Buffer Count,
+ * Mutex Lock, Empty Signal, Full Signal
+ * 
+ */
+typedef struct {
+	char* name;
+	struct write_request buffer[BUFFER_SIZE];
+	int buffer_count;
+	pthread_mutex_t mutex;
+	pthread_cond_t empty;
+	pthread_cond_t full;
+} buffer_t; 
+
+buffer_t buffer_request, buffer_metadata, buffer_commit;
+
+/**
+ * @brief Initialize a Request Buffer
+ * 
+ * @param buffer Buffer
+ */
+void init_buffer(buffer_t* buffer, char* name) {
+	buffer->name = name;
+	buffer->buffer_count = 0;
+	pthread_mutex_init(&buffer->mutex, NULL);
+	pthread_cond_init(&buffer->empty, NULL);
+	pthread_cond_init(&buffer->full, NULL);
+}
+
+/**
+ * @brief Enqueue a request to the buffer
+ * 
+ * @param buffer Buffer
+ * @param wr Write Request
+ */
+void enqueue(buffer_t* buffer, struct write_request* wr) {
+	pthread_mutex_lock(&buffer->mutex);
+
+	while(buffer->buffer_count >= BUFFER_SIZE) {
+		printf("Buffer %s is full.\n", buffer->name);
+		pthread_cond_wait(&buffer->full, &buffer->mutex);
+	}
+
+	buffer->buffer[buffer->buffer_count] = *wr;
+	buffer->buffer_count++;
+	pthread_cond_signal(&buffer->empty);
+
+	pthread_mutex_unlock(&buffer->mutex);
+}
+
+/**
+ * @brief Dequeue a Request from the Buffer
+ * 
+ * @param buffer Buffer
+ * @param wr Write Request
+ */
+void dequeue(buffer_t* buffer, struct write_request* wr) {
+	pthread_mutex_lock(&buffer->mutex);
+
+	while(buffer->buffer_count <= 0) {
+		printf("Buffer %s empty.\n", buffer->name);
+		pthread_cond_wait(&buffer->empty, &buffer->mutex);
+	}
+
+	*wr = buffer->buffer[buffer->buffer_count-1];
+	buffer->buffer_count--;
+	pthread_cond_signal(&buffer->full);
+
+	pthread_mutex_unlock(&buffer->mutex);
+}
+
+/**
+ * @brief Journal Metadata
+ * 
+ * @param args (NULL)
+ * @return void*
+ */
+void* journal_metadata(void* args) {
+
+	/*
+		A journal-metadata-write-thread takes a request out of the request buffer
+		(whenever the buffer is not empty), calls the functions to write the data 
+		and journal metadata (see example code above), waits for all issued writes
+		to complete, and then enqueues the request in the next buffer.
+	*/
+
+	while(1) {
+		struct write_request wr;
+		dequeue(&buffer_request, &wr);
+
+		// write data and journal metadata
+		issue_write_data(wr.data, wr.data_idx);
+		issue_journal_txb();
+		issue_journal_bitmap(wr.bitmap, wr.bitmap_idx);
+		issue_journal_inode(wr.inode, wr.inode_idx);
+
+		enqueue(&buffer_metadata, &wr);
+	}
+	pthread_exit(NULL);
+}
+
+/**
+ * @brief Issues journal txe
+ * 
+ * @param args (NULL)
+ * @return void* 
+ */
+void* journal_commit(void* args) {
+
+	/*
+		A journal-metadata-commit-write-thread takes a request out of the previous
+		buffer, issues the journal txe (transaction end), waits for completion of 
+		writing the txe block, and then enqueues the request in the next buffer.
+	*/
+
+	while(1) {
+		struct write_request wr;
+		dequeue(&buffer_metadata, &wr);
+
+		// commit transaction by writing txe
+		issue_journal_txe();
+
+		enqueue(&buffer_commit, &wr);
+	}
+	pthread_exit(NULL);
+}
+
+/**
+ * @brief Completes writing metadata
+ * 
+ * @param args (NULL)
+ * @return void* 
+ */
+void* journal_checkpoint(void* args) {
+
+	/*
+		The checkpoint-metadata-thread takes a request
+		out of the previous buffer, issues writing the metadata, waits 
+		for completion of writing the metadata, and then calls write_complete()
+	*/
+
+	while(1) {
+		struct write_request wr;
+		dequeue(&buffer_commit, &wr);
+
+		// checkpoint by writing metadata
+		issue_write_bitmap(wr.bitmap, wr.bitmap_idx);
+		issue_write_inode(wr.inode, wr.inode_idx);
+
+		// tell the file system that the write is complete
+		write_complete();
+	}
+	pthread_exit(NULL);
+}
 
 /* This function can be used to initialize the buffers and threads.
  */
 void init_journal() {
+	
+	// Create buffers
+	printf("Initializing Buffers\n");
+	init_buffer(&buffer_request, NAME(buffer_request));
+	init_buffer(&buffer_metadata, NAME(buffer_metadata));
+	init_buffer(&buffer_commit, NAME(buffer_commit));
+
+	// Create threads
+	printf("Initializing Threads\n");
+	pthread_t journal_metadata_tid, journal_commit_tid, journal_checkpoint_tid;
+	pthread_create(&journal_metadata_tid, NULL, journal_metadata, NULL);
+	pthread_create(&journal_commit_tid, NULL, journal_commit, NULL);
+	pthread_create(&journal_checkpoint_tid, NULL, journal_checkpoint, NULL);
 }
 
 /* This function is called by the file system to request writing data to
  * persistent storage.
- *
- * This is the non-thread-safe solution to the problem. It issues all writes in
- * the correct order, but it doesn't wait for each phase to complete before
- * beginning the next. As a result the journal can become inconsistent and
- * unrecoverable.
+ * 
+ * Thread safe implementation enqueues write requests to a buffer
  */
 void request_write(struct write_request* wr) {
-	// write data and journal metadata
-	issue_write_data(wr->data, wr->data_idx);
-	issue_journal_txb();
-	issue_journal_bitmap(wr->bitmap, wr->bitmap_idx);
-	issue_journal_inode(wr->inode, wr->inode_idx);
-	// commit transaction by writing txe
-	issue_journal_txe();
-	// checkpoint by writing metadata
-	issue_write_bitmap(wr->bitmap, wr->bitmap_idx);
-	issue_write_inode(wr->inode, wr->inode_idx);
-	// tell the file system that the write is complete
-	write_complete();
+
+	// Enqueue request in request buffer
+	enqueue(&buffer_request, wr);
 }
 
 /* This function is called by the block service when writing the txb block
