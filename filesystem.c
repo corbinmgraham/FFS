@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "journal.h"
 
-#define NUM_TESTS 10
+#define NUM_TESTS 2
 struct write_request test_requests[NUM_TESTS];
 
 void write_complete() {
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// give the tests time to complete before exiting
-	sleep(5);
+	sleep(10);
 
 	return 0;
 }

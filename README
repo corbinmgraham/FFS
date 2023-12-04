@@ -1,6 +1,25 @@
 COM S 352 Project 2
 Author: Corbin Graham
 
+Updates:
 - Updated makefile to support "make clean"
 - Updated makefile to add .exe extension for journal
+- Updated makefile to support gdb for debugging
 - Added Readme
+- Added documentation to journal.c
+- Added 3 buffers and 3 threads to support concurrency
+during writes
+
+Additional Functions:
+- 
+
+Temporary Updates:
+- During testing, modified filesystem to support longer wait times
+for all writes to complete after adding sleep times
+- During testing, modified and added outputs to each function in
+journal.c
+
+Testing:
+- Modified block_service.c and added sleeper threads to test 
+concurrency
+- Added output with request ID (based on index) for output

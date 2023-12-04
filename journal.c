@@ -1,28 +1,45 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "journal.h"
 
 #define NAME(x) #x // Return the name of a variable
 
 /**
  * @brief Asyncronous Request Buffer
- * Name, Buffer[MAX_BUFFER], Buffer Count,
- * Mutex Lock, Empty Signal, Full Signal
+ * Name, Buffer[MAX_BUFFER], Write Position,
+ * Read Position, Mutex Lock, Empty Signal, 
+ * Full Signal
  * 
  */
 typedef struct {
+
+	// Buffer Queue Data
 	char* name;
 	struct write_request buffer[BUFFER_SIZE];
-	// int buffer_count;
 	int write;
 	int read;
-
 	pthread_mutex_t mutex;
 	pthread_cond_t empty;
 	pthread_cond_t full;
+
+	// Write Requestion Conditions
+	/// Metadata (Buffer_Request)
+	sem_t* issue_write_data_cond;
+	sem_t* issue_journal_txb_cond;
+	sem_t* issue_journal_bitmap_cond;
+	sem_t* issue_journal_inode_cond;
+	/// Commit Data (Buffer_Metadata)
+	sem_t* issue_journal_txe_cond;
+	/// Completion Data (Buffer_Commit)
+	sem_t* issue_write_bitmap_cond;
+	sem_t* issue_write_inode_cond;
+
 } buffer_t; 
 
+// 3 Buffers for 3 phases of journal
+//	buffer_request -> buffer_metadata -> buffer_commit
 buffer_t buffer_request, buffer_metadata, buffer_commit;
 
 /**
@@ -32,12 +49,30 @@ buffer_t buffer_request, buffer_metadata, buffer_commit;
  */
 void init_buffer(buffer_t* buffer, char* name) {
 	buffer->name = name;
-	// buffer->buffer_count = 0;
 	buffer->write = 0;
 	buffer->read = 0;
 	pthread_mutex_init(&buffer->mutex, NULL);
 	pthread_cond_init(&buffer->empty, NULL);
 	pthread_cond_init(&buffer->full, NULL);
+
+	// Write Requestion Conditions
+	/// Metadata (Buffer_Request)
+	buffer->issue_write_data_cond = sem_open("/issue_write_data_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_write_data_cond");
+	buffer->issue_journal_txb_cond = sem_open("/issue_journal_txb_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_journal_txb_cond");
+	buffer->issue_journal_bitmap_cond = sem_open("/issue_journal_bitmap_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_journal_bitmap_cond");
+	buffer->issue_journal_inode_cond = sem_open("/issue_journal_inode_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_journal_inode_cond");
+	/// Commit Data (Buffer_Metadata)
+	buffer->issue_journal_txe_cond = sem_open("/issue_journal_txe_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_journal_txe_cond");
+	/// Completion Data (Buffer_Commit)
+	buffer->issue_write_bitmap_cond = sem_open("/issue_write_bitmap_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_write_bitmap_cond");
+	buffer->issue_write_inode_cond = sem_open("/issue_write_inode_cond", O_CREAT, 0644, 0);
+	sem_unlink("/issue_write_inode_cond");
 }
 
 /**
@@ -49,18 +84,10 @@ void init_buffer(buffer_t* buffer, char* name) {
 void enqueue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
-	// while(buffer->buffer_count >= BUFFER_SIZE) {
-	// 	printf("Buffer %s is full.\n", buffer->name);
-	// 	pthread_cond_wait(&buffer->full, &buffer->mutex);
-	// }
 	while((buffer->write + 1) % BUFFER_SIZE == buffer->read) {
 		printf("Buffer %s is full.\n", buffer->name);
 		pthread_cond_wait(&buffer->full, &buffer->mutex);
 	}
-
-	// buffer->buffer[buffer->buffer_count] = *wr;
-	// buffer->buffer_count++;
-	// pthread_cond_signal(&buffer->empty);
 
 	buffer->buffer[buffer->write] = *wr;
 	buffer->write = (buffer->write + 1) % BUFFER_SIZE;
@@ -78,20 +105,10 @@ void enqueue(buffer_t* buffer, struct write_request* wr) {
 void dequeue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
-	// while(buffer->buffer_count == 0) {
-	// 	printf("Buffer %s is empty.\n", buffer->name);
-	// 	pthread_cond_wait(&buffer->empty, &buffer->mutex);
-	// }
-
 	while(buffer->read == buffer->write) {
 		printf("Buffer %s is empty.\n", buffer->name);
 		pthread_cond_wait(&buffer->empty, &buffer->mutex);
 	}
-
-	// int index = (buffer->buffer_count - 1) % BUFFER_SIZE;
-	// *wr = buffer->buffer[index];
-	// buffer->buffer_count--;
-	// pthread_cond_signal(&buffer->full);
 
 	*wr = buffer->buffer[buffer->read];
 	buffer->read = (buffer->read + 1) % BUFFER_SIZE;
@@ -116,6 +133,8 @@ void* journal_metadata(void* args) {
 	*/
 
 	while(1) {
+
+		// dequeue from previous buffer
 		struct write_request wr;
 		dequeue(&buffer_request, &wr);
 
@@ -125,6 +144,13 @@ void* journal_metadata(void* args) {
 		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_bitmap(wr.bitmap, wr.bitmap_idx);
 		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_inode(wr.inode, wr.inode_idx);
 
+		// wait for completion
+		sem_wait(buffer_request.issue_write_data_cond);
+		sem_wait(buffer_request.issue_journal_txb_cond);
+		sem_wait(buffer_request.issue_journal_bitmap_cond);
+		sem_wait(buffer_request.issue_journal_inode_cond);
+
+		// enqueue in next buffer
 		enqueue(&buffer_metadata, &wr);
 	}
 	pthread_exit(NULL);
@@ -145,14 +171,18 @@ void* journal_commit(void* args) {
 	*/
 
 	while(1) {
+
+		// dequeue from previous buffer
 		struct write_request wr;
 		dequeue(&buffer_metadata, &wr);
-
-		sleep(1);
 
 		// commit transaction by writing txe
 		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_txe();
 
+		// wait for completion
+		sem_wait(buffer_metadata.issue_journal_txe_cond);
+
+		// enqueue in next buffer
 		enqueue(&buffer_commit, &wr);
 	}
 	pthread_exit(NULL);
@@ -173,12 +203,18 @@ void* journal_checkpoint(void* args) {
 	*/
 
 	while(1) {
+
+		// dequeue from previous buffer
 		struct write_request wr;
 		dequeue(&buffer_commit, &wr);
 
 		// checkpoint by writing metadata
 		printf("Request %d ", (wr.bitmap_idx-99)); issue_write_bitmap(wr.bitmap, wr.bitmap_idx);
 		printf("Request %d ", (wr.bitmap_idx-99)); issue_write_inode(wr.inode, wr.inode_idx);
+
+		// wait for completion
+		sem_wait(buffer_commit.issue_write_bitmap_cond);
+		sem_wait(buffer_commit.issue_write_inode_cond);
 
 		// tell the file system that the write is complete
 		printf("Request %d ", (wr.bitmap_idx-99)); write_complete();
@@ -219,30 +255,37 @@ void request_write(struct write_request* wr) {
  * to persistent storage is complete (e.g., it is physically written to disk).
  */
 void journal_txb_complete() {
+	sem_post(buffer_request.issue_journal_txb_cond);
 	printf("journal txb complete\n");
 }
 
 void journal_bitmap_complete() {
+	sem_post(buffer_request.issue_journal_bitmap_cond);
 	printf("journal bitmap complete\n");
 }
 
 void journal_inode_complete() {
+	sem_post(buffer_request.issue_journal_inode_cond);
 	printf("journal inode complete\n");
 }
 
 void write_data_complete() {
+	sem_post(buffer_request.issue_write_data_cond);
 	printf("write data complete\n");
 }
 
 void journal_txe_complete() {
-	printf("jounrnal txe complete\n");
+	sem_post(buffer_metadata.issue_journal_txe_cond);
+	printf("journal txe complete\n");
 }
 
 void write_bitmap_complete() {
+	sem_post(buffer_commit.issue_write_bitmap_cond);
 	printf("write bitmap complete\n");
 }
 
 void write_inode_complete() {
+	sem_post(buffer_commit.issue_write_inode_cond);
 	printf("write inode complete\n");
 }
 
