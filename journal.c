@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <stdlib.h> // TODO: Remove
 #include "journal.h"
 
 #define NAME(x) #x // Return the name of a variable
@@ -15,7 +14,10 @@
 typedef struct {
 	char* name;
 	struct write_request buffer[BUFFER_SIZE];
-	int buffer_count;
+	// int buffer_count;
+	int write;
+	int read;
+
 	pthread_mutex_t mutex;
 	pthread_cond_t empty;
 	pthread_cond_t full;
@@ -30,7 +32,9 @@ buffer_t buffer_request, buffer_metadata, buffer_commit;
  */
 void init_buffer(buffer_t* buffer, char* name) {
 	buffer->name = name;
-	buffer->buffer_count = 0;
+	// buffer->buffer_count = 0;
+	buffer->write = 0;
+	buffer->read = 0;
 	pthread_mutex_init(&buffer->mutex, NULL);
 	pthread_cond_init(&buffer->empty, NULL);
 	pthread_cond_init(&buffer->full, NULL);
@@ -45,13 +49,21 @@ void init_buffer(buffer_t* buffer, char* name) {
 void enqueue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
-	while(buffer->buffer_count >= BUFFER_SIZE) {
+	// while(buffer->buffer_count >= BUFFER_SIZE) {
+	// 	printf("Buffer %s is full.\n", buffer->name);
+	// 	pthread_cond_wait(&buffer->full, &buffer->mutex);
+	// }
+	while((buffer->write + 1) % BUFFER_SIZE == buffer->read) {
 		printf("Buffer %s is full.\n", buffer->name);
 		pthread_cond_wait(&buffer->full, &buffer->mutex);
 	}
 
-	buffer->buffer[buffer->buffer_count] = *wr;
-	buffer->buffer_count++;
+	// buffer->buffer[buffer->buffer_count] = *wr;
+	// buffer->buffer_count++;
+	// pthread_cond_signal(&buffer->empty);
+
+	buffer->buffer[buffer->write] = *wr;
+	buffer->write = (buffer->write + 1) % BUFFER_SIZE;
 	pthread_cond_signal(&buffer->empty);
 
 	pthread_mutex_unlock(&buffer->mutex);
@@ -66,13 +78,23 @@ void enqueue(buffer_t* buffer, struct write_request* wr) {
 void dequeue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
-	while(buffer->buffer_count <= 0) {
-		printf("Buffer %s empty.\n", buffer->name);
+	// while(buffer->buffer_count == 0) {
+	// 	printf("Buffer %s is empty.\n", buffer->name);
+	// 	pthread_cond_wait(&buffer->empty, &buffer->mutex);
+	// }
+
+	while(buffer->read == buffer->write) {
+		printf("Buffer %s is empty.\n", buffer->name);
 		pthread_cond_wait(&buffer->empty, &buffer->mutex);
 	}
 
-	*wr = buffer->buffer[buffer->buffer_count-1];
-	buffer->buffer_count--;
+	// int index = (buffer->buffer_count - 1) % BUFFER_SIZE;
+	// *wr = buffer->buffer[index];
+	// buffer->buffer_count--;
+	// pthread_cond_signal(&buffer->full);
+
+	*wr = buffer->buffer[buffer->read];
+	buffer->read = (buffer->read + 1) % BUFFER_SIZE;
 	pthread_cond_signal(&buffer->full);
 
 	pthread_mutex_unlock(&buffer->mutex);
@@ -98,10 +120,10 @@ void* journal_metadata(void* args) {
 		dequeue(&buffer_request, &wr);
 
 		// write data and journal metadata
-		issue_write_data(wr.data, wr.data_idx);
-		issue_journal_txb();
-		issue_journal_bitmap(wr.bitmap, wr.bitmap_idx);
-		issue_journal_inode(wr.inode, wr.inode_idx);
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_write_data(wr.data, wr.data_idx);
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_txb();
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_bitmap(wr.bitmap, wr.bitmap_idx);
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_inode(wr.inode, wr.inode_idx);
 
 		enqueue(&buffer_metadata, &wr);
 	}
@@ -126,8 +148,10 @@ void* journal_commit(void* args) {
 		struct write_request wr;
 		dequeue(&buffer_metadata, &wr);
 
+		sleep(1);
+
 		// commit transaction by writing txe
-		issue_journal_txe();
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_journal_txe();
 
 		enqueue(&buffer_commit, &wr);
 	}
@@ -153,11 +177,11 @@ void* journal_checkpoint(void* args) {
 		dequeue(&buffer_commit, &wr);
 
 		// checkpoint by writing metadata
-		issue_write_bitmap(wr.bitmap, wr.bitmap_idx);
-		issue_write_inode(wr.inode, wr.inode_idx);
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_write_bitmap(wr.bitmap, wr.bitmap_idx);
+		printf("Request %d ", (wr.bitmap_idx-99)); issue_write_inode(wr.inode, wr.inode_idx);
 
 		// tell the file system that the write is complete
-		write_complete();
+		printf("Request %d ", (wr.bitmap_idx-99)); write_complete();
 	}
 	pthread_exit(NULL);
 }
