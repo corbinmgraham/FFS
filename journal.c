@@ -85,7 +85,7 @@ void enqueue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
 	while((buffer->write + 1) % BUFFER_SIZE == buffer->read) {
-		printf("Buffer %s is full.\n", buffer->name);
+		printf("Thread stuck because of full buffer %s.\n", buffer->name);
 		pthread_cond_wait(&buffer->full, &buffer->mutex);
 	}
 
@@ -106,7 +106,7 @@ void dequeue(buffer_t* buffer, struct write_request* wr) {
 	pthread_mutex_lock(&buffer->mutex);
 
 	while(buffer->read == buffer->write) {
-		printf("Buffer %s is empty.\n", buffer->name);
+		printf("Thread stuck because of empty buffer %s.\n", buffer->name);
 		pthread_cond_wait(&buffer->empty, &buffer->mutex);
 	}
 

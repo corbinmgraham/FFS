@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
+#include <stdlib.h>
 #include "journal.h"
 
 #define NUM_TESTS 10
@@ -10,6 +12,7 @@ void write_complete() {
 }
 
 int main(int argc, char *argv[]) {
+	srand(time(NULL));
 	init_journal();
 	for (int i=0; i<NUM_TESTS; i++) {
 		test_requests[i].bitmap = "x";
@@ -24,7 +27,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// give the tests time to complete before exiting
-	sleep(5);
+	sleep(30);
 
 	return 0;
 }

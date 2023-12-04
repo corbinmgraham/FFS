@@ -448,3 +448,193 @@ Buffer buffer_commit is empty.
 As you can see from this example, the metadata buffer
 fills until the first (request 1's) txe is complete
 before request 2 can begin its txe write.
+
+with randomized completion times (time limit 30s):
+
+----------------------------------------------
+Initializing Buffers
+Initializing Threads
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+Thread stuck because of full buffer buffer_request.
+Thread stuck because of empty buffer buffer_commit.
+Thread stuck because of empty buffer buffer_metadata.
+Request 1 issue write data z at 300
+requesting test write
+Thread stuck because of full buffer buffer_request.
+Request 1 issue journal txb
+Request 1 issue journal bitmap x at 100
+Request 1 issue journal inode y at 200
+Request 1 write data complete
+Request 1 Request 1 journal bitmap complete
+journal txb complete
+Request 1 journal inode complete
+Request 2 issue write data z at 301
+Request 1 issue journal txe
+Request 2 issue journal txb
+requesting test write
+Thread stuck because of full buffer buffer_request.
+Request 2 issue journal bitmap x at 101
+Request 2 Request 2 issue journal inode y at 201
+journal txe complete
+Thread stuck because of empty buffer buffer_metadata.
+Request 1 issue write bitmap x at 100
+Request 1 issue write inode y at 200
+Request 1 journal txb complete
+Request 1 write data complete
+Request 1 journal bitmap complete
+Request 1 Request 1 journal inode complete
+Request 1 write inode complete
+Request 3 issue write data z at 302
+Request 1 write bitmap complete
+test write complete
+Thread stuck because of empty buffer buffer_commit.
+Request 2 issue journal txe
+Request 3 issue journal txb
+Request 3 issue journal bitmap x at 102
+Request 3 write data complete
+Request 3 issue journal inode y at 202
+Request 3 journal bitmap complete
+Request 3 Request 3 journal txe complete
+Request 3 journal inode complete
+journal txb complete
+Thread stuck because of empty buffer buffer_metadata.
+Request 4 issue write data z at 303
+Request 4 issue journal txb
+Request 4 issue journal bitmap x at 103
+Request 4 issue journal inode y at 203
+Request 2 issue write bitmap x at 101
+Request 2 issue write inode y at 201
+Request 3 issue journal txe
+Request 2 write bitmap complete
+Request 2 journal inode complete
+Request 2 journal txb complete
+Request 2 write data complete
+Request 2 journal bitmap complete
+Request 2 Request 2 Request 5 issue write data z at 304
+journal txe complete
+write inode complete
+Request 4 issue journal txe
+Request 2 test write complete
+Request 3 issue write bitmap x at 102
+Request 5 issue journal txb
+Request 5 issue journal bitmap x at 104
+Request 5 issue journal inode y at 204
+Request 3 issue write inode y at 202
+Request 3 journal bitmap complete
+Request 3 journal inode complete
+Request 3 write inode complete
+Request 3 Request 3 journal txe complete
+Request 3 Request 3 journal txb complete
+write bitmap complete
+Request 3 write data complete
+test write complete
+Request 4 issue write bitmap x at 103
+Thread stuck because of empty buffer buffer_metadata.
+Request 6 issue write data z at 305
+Request 5 issue journal txe
+Request 4 issue write inode y at 203
+Request 4 Request 6 issue journal txb
+write bitmap complete
+Request 6 issue journal bitmap x at 105
+Request 6 write data complete
+Request 6 journal txb complete
+Request 6 issue journal inode y at 205
+Request 6 journal bitmap complete
+Request 6 Request 6 write inode complete
+journal txe complete
+Request 6 Request 4 test write complete
+Thread stuck because of empty buffer buffer_commit.
+Request 7 issue write data z at 306
+journal inode complete
+Request 5 issue write bitmap x at 104
+Request 6 issue journal txe
+Request 7 issue journal txb
+Request 5 issue write inode y at 204
+Request 7 issue journal bitmap x at 106
+Request 7 write bitmap complete
+Request 7 Request 7 issue journal inode y at 206
+journal txb complete
+Request 7 write inode complete
+Request 5 test write complete
+Thread stuck because of empty buffer buffer_commit.
+Request 7 Request 7 Request 7 journal bitmap complete
+journal txe complete
+Request 7 journal inode complete
+write data complete
+Request 6 issue write bitmap x at 105
+Thread stuck because of empty buffer buffer_metadata.
+Request 7 issue journal txe
+Request 8 issue write data z at 307
+Request 6 issue write inode y at 205
+Request 8 issue journal txb
+Request 8 Request 8 write data complete
+journal txe complete
+Request 8 issue journal bitmap x at 107
+Thread stuck because of empty buffer buffer_metadata.
+Request 8 Request 8 issue journal inode y at 207
+journal txb complete
+Request 8 journal inode complete
+Request 8 Request 8 write inode complete
+Request 6 test write complete
+Request 7 issue write bitmap x at 106
+Request 8 journal bitmap complete
+write bitmap complete
+Request 9 issue write data z at 308
+Request 8 issue journal txe
+Request 9 issue journal txb
+Request 7 issue write inode y at 206
+Request 9 write data complete
+Request 7 journal txb complete
+Request 9 issue journal bitmap x at 108
+Request 9 write bitmap complete
+Request 9 issue journal inode y at 208
+Request 9 journal inode complete
+Request 9 Request 9 write inode complete
+journal txe complete
+Request 9 Request 7 test write complete
+Thread stuck because of empty buffer buffer_commit.
+journal bitmap complete
+Thread stuck because of empty buffer buffer_metadata.
+Request 8 issue write bitmap x at 107
+Request 10 issue write data z at 309
+Request 9 issue journal txe
+Request 10 issue journal txb
+Request 8 issue write inode y at 207
+Request 10 issue journal bitmap x at 109
+Request 8 Request 10 journal txe complete
+Request 10 Thread stuck because of empty buffer buffer_metadata.
+Request 10 write inode complete
+write data complete
+Request 10 issue journal inode y at 209
+Request 10 journal txb complete
+write bitmap complete
+Request 8 test write complete
+Request 9 issue write bitmap x at 108
+Request 9 issue write inode y at 208
+Request 9 write bitmap complete
+Request 9 write inode complete
+Request 9 test write complete
+Thread stuck because of empty buffer buffer_commit.
+Request 9 journal bitmap complete
+Request 9 journal inode complete
+Thread stuck because of empty buffer buffer_request.
+Request 10 issue journal txe
+Request 9 journal txe complete
+Thread stuck because of empty buffer buffer_metadata.
+Request 10 issue write bitmap x at 109
+Request 10 issue write inode y at 209
+Request 10 write inode complete
+Request 10 write bitmap complete
+Request 10 test write complete
+Thread stuck because of empty buffer buffer_commit.
+----------------------------------------------
+
+As you can see, there are no times that a step is going
+when it should not be.
