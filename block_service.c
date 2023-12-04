@@ -24,9 +24,9 @@ void* sleep_thread(void* args) {
 void issue_journal_txb() {
 	printf("issue journal txb\n");
 
-	pthread_t test;
-	pthread_create(&test, NULL, sleep_thread, (void*)journal_txb_complete);
-	// journal_txb_complete();
+	// pthread_t test;
+	// pthread_create(&test, NULL, sleep_thread, (void*)journal_txb_complete);
+	journal_txb_complete();
 }
 
 void issue_journal_bitmap(char* bitmap, int idx) {

@@ -1,6 +1,28 @@
 COM S 352 Project 2
 Author: Corbin Graham
 
+Description:
+To approach this project, I used 3 buffers and 3 threads
+to allow for maximum possible concurrency during the
+three stages of the journaling process.
+The threads are constantly running waiting for their
+designated buffer to dequeue a write request. Once they
+have received a write request, they then call their
+designated journaling functions in the block service
+layer. After the appropriate functions have completed,
+the write request is enqueued into the next buffer
+awaiting the next thread to be ready.
+Once all buffers have been emptied, the threads will
+idle indefinitely. Should a buffer be full, a message
+will be displayed stating the buffer is full and the
+thread will run until the buffer is empty.
+
+For maximum internal concurrency, all threads will call
+their appropriate service function and using semaphores,
+will await the completion of each of these functions.
+It is not until all of these functions have completed
+that it will be enqueued into the next buffer.
+
 Updates:
 - Updated makefile to support "make clean"
 - Updated makefile to add .exe extension for journal
@@ -9,17 +31,45 @@ Updates:
 - Added documentation to journal.c
 - Added 3 buffers and 3 threads to support concurrency
 during writes
+- Added semaphores to internally async threads and
+prevent race conditions
 
-Additional Functions:
-- 
+init_journal:
+- Creates 3 buffers for request, metadata, and commit
+- Creates 3 threads for metadata, commit, and checkpoint
 
-Temporary Updates:
-- During testing, modified filesystem to support longer wait times
-for all writes to complete after adding sleep times
-- During testing, modified and added outputs to each function in
-journal.c
+Buffers:
+- buffer_request
+- buffer_metadata
+- buffer_commit
+__Functions__
+- buffer_t
+- init_buffer()
+- enqueue()
+- dequeue()
+- Followed circular buffer (https://en.wikipedia.org/wiki/Circular_buffer)
+__Details__
+- FIFO Ordering
+- Stores buffer conditions
+- Stores completion semaphores
+- **init_buffer uses sem_open instead of sem_init**
+to support MacOS and updated posix semaphores
+- enqueue uses pthread_cond_t to wait for space
+- dequeue uses pthread_cond_t to wait for wr
+
+Threads:
+- journal_metadata_thread
+- journal_commit_thread
+- journal_checkpoint_thread
+- Threads prevent race conditions
+- Threads achieve maximum available concurrency
+- Threads are synchronized using pthreads and internally
+using semaphores
 
 Testing:
 - Modified block_service.c and added sleeper threads to test 
 concurrency
 - Added output with request ID (based on index) for output
+
+Test Results:
+

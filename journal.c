@@ -234,10 +234,10 @@ void init_journal() {
 
 	// Create threads
 	printf("Initializing Threads\n");
-	pthread_t journal_metadata_tid, journal_commit_tid, journal_checkpoint_tid;
-	pthread_create(&journal_metadata_tid, NULL, journal_metadata, NULL);
-	pthread_create(&journal_commit_tid, NULL, journal_commit, NULL);
-	pthread_create(&journal_checkpoint_tid, NULL, journal_checkpoint, NULL);
+	pthread_t journal_metadata_thread, journal_commit_thread, journal_checkpoint_thread;
+	pthread_create(&journal_metadata_thread, NULL, journal_metadata, NULL);
+	pthread_create(&journal_commit_thread, NULL, journal_commit, NULL);
+	pthread_create(&journal_checkpoint_thread, NULL, journal_checkpoint, NULL);
 }
 
 /* This function is called by the file system to request writing data to
