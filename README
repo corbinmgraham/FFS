@@ -72,4 +72,379 @@ concurrency
 - Added output with request ID (based on index) for output
 
 Test Results:
+There are two types of tests: one for a baseline is with
+immediate storage completion, others are with random pauses.
 
+with Immediate Storage Completion (baseline):
+
+----------------------------------------------
+Initializing Buffers
+Initializing Threads
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+Buffer buffer_request is full.
+Buffer buffer_metadata is empty.
+Request 1 issue write data z at 300
+Buffer buffer_commit is empty.
+write data complete
+Request 1 issue journal txb
+journal txb complete
+Request 1 issue journal bitmap x at 100
+journal bitmap complete
+Request 1 issue journal inode y at 200
+journal inode complete
+requesting test write
+Buffer buffer_request is full.
+Request 2 issue write data z at 301
+write data complete
+Request 2 issue journal txb
+journal txb complete
+Request 2 issue journal bitmap x at 101
+Request 1 issue journal txe
+journal bitmap complete
+Request 2 issue journal inode y at 201
+journal inode complete
+requesting test write
+Buffer buffer_request is full.
+journal txe complete
+Request 3 issue write data z at 302
+write data complete
+Request 3 issue journal txb
+journal txb complete
+Request 3 issue journal bitmap x at 102
+journal bitmap complete
+Request 3 issue journal inode y at 202
+Request 2 issue journal txe
+journal txe complete
+Buffer buffer_metadata is empty.
+Request 1 issue write bitmap x at 100
+write bitmap complete
+Request 1 issue write inode y at 200
+write inode complete
+Request 1 test write complete
+Request 2 issue write bitmap x at 101
+journal inode complete
+write bitmap complete
+Request 2 issue write inode y at 201
+Request 4 issue write data z at 303
+write inode complete
+write data complete
+Request 4 issue journal txb
+Request 2 journal txb complete
+Request 4 issue journal bitmap x at 103
+Request 3 issue journal txe
+journal bitmap complete
+journal txe complete
+Buffer buffer_metadata is empty.
+Request 4 issue journal inode y at 203
+journal inode complete
+test write complete
+Request 3 issue write bitmap x at 102
+write bitmap complete
+Request 3 issue write inode y at 202
+write inode complete
+Request 5 issue write data z at 304
+Request 3 test write complete
+Buffer buffer_commit is empty.
+Request 4 issue journal txe
+journal txe complete
+write data complete
+Request 5 issue journal txb
+Request 4 issue write bitmap x at 103
+journal txb complete
+Request 5 issue journal bitmap x at 104
+Buffer buffer_metadata is empty.
+journal bitmap complete
+Request 5 issue journal inode y at 204
+write bitmap complete
+Request 4 issue write inode y at 203
+journal inode complete
+write inode complete
+Request 4 test write complete
+Request 5 issue journal txe
+Buffer buffer_commit is empty.
+journal txe complete
+Request 6 issue write data z at 305
+write data complete
+Request 6 issue journal txb
+Buffer buffer_metadata is empty.
+journal txb complete
+Request 6 issue journal bitmap x at 105
+journal bitmap complete
+Request 6 issue journal inode y at 205
+journal inode complete
+Request 5 issue write bitmap x at 104
+write bitmap complete
+Request 5 issue write inode y at 204
+write inode complete
+Request 6 issue journal txe
+Request 5 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Buffer buffer_metadata is empty.
+Request 7 issue write data z at 306
+Request 6 issue write bitmap x at 105
+write data complete
+Request 7 issue journal txb
+write bitmap complete
+Request 6 journal txb complete
+Request 7 issue journal bitmap x at 106
+journal bitmap complete
+Request 7 issue journal inode y at 206
+journal inode complete
+Request 8 issue write data z at 307
+write data complete
+Request 8 issue journal txb
+issue write inode y at 205
+Request 7 issue journal txe
+write inode complete
+journal txb complete
+Request 6 test write complete
+Buffer buffer_commit is empty.
+Request 8 issue journal bitmap x at 107
+journal bitmap complete
+Request 8 issue journal inode y at 207
+journal inode complete
+journal txe complete
+Request 9 issue write data z at 308
+write data complete
+Request 9 issue journal txb
+Request 7 issue write bitmap x at 106
+journal txb complete
+Request 9 issue journal bitmap x at 108
+journal bitmap complete
+Request 9 issue journal inode y at 208
+write bitmap complete
+journal inode complete
+Request 7 issue write inode y at 206
+write inode complete
+Request 8 issue journal txe
+journal txe complete
+Request 9 issue journal txe
+journal txe complete
+Request 7 test write complete
+Request 8 issue write bitmap x at 107
+Buffer buffer_metadata is empty.
+Request 10 issue write data z at 309
+write data complete
+Request 10 issue journal txb
+write bitmap complete
+Request 8 issue write inode y at 207
+write inode complete
+journal txb complete
+Request 10 issue journal bitmap x at 109
+journal bitmap complete
+Request 10 issue journal inode y at 209
+Request 8 test write complete
+Request 9 issue write bitmap x at 108
+journal inode complete
+Buffer buffer_request is empty.
+write bitmap complete
+Request 9 issue write inode y at 208
+write inode complete
+Request 9 test write complete
+Buffer buffer_commit is empty.
+Request 10 issue journal txe
+journal txe complete
+Buffer buffer_metadata is empty.
+Request 10 issue write bitmap x at 109
+write bitmap complete
+Request 10 issue write inode y at 209
+write inode complete
+Request 10 test write complete
+Buffer buffer_commit is empty.
+----------------------------------------------
+
+with journal_txe_complete() sleep for 1 sec:
+
+----------------------------------------------
+Initializing Buffers
+Initializing Threads
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+requesting test write
+Buffer buffer_request is full.
+Request 1 issue write data z at 300
+write data complete
+Request 1 issue journal txb
+journal txb complete
+Request 1 issue journal bitmap x at 100
+journal bitmap complete
+Request 1 issue journal inode y at 200
+journal inode complete
+Request 2 issue write data z at 301
+write data complete
+Request 2 issue journal txb
+journal txb complete
+Request 2 issue journal bitmap x at 101
+journal bitmap complete
+Request 2 issue journal inode y at 201
+journal inode complete
+Request 3 issue write data z at 302
+write data complete
+Request 3 issue journal txb
+journal txb complete
+Request 3 issue journal bitmap x at 102
+journal bitmap complete
+Request 3 issue journal inode y at 202
+journal inode complete
+Request 4 issue write data z at 303
+write data complete
+Request 4 issue journal txb
+journal txb complete
+Request 4 issue journal bitmap x at 103
+journal bitmap complete
+Request 4 issue journal inode y at 203
+journal inode complete
+Request 5 issue write data z at 304
+write data complete
+Request 5 issue journal txb
+journal txb complete
+Request 5 issue journal bitmap x at 104
+journal bitmap complete
+Request 5 issue journal inode y at 204
+journal inode complete
+Request 6 issue write data z at 305
+write data complete
+Request 6 issue journal txb
+journal txb complete
+Request 6 issue journal bitmap x at 105
+journal bitmap complete
+Request 6 issue journal inode y at 205
+journal inode complete
+Request 7 issue write data z at 306
+write data complete
+Request 7 issue journal txb
+journal txb complete
+Request 7 issue journal bitmap x at 106
+journal bitmap complete
+Request 7 issue journal inode y at 206
+journal inode complete
+Buffer buffer_request is empty.
+Buffer buffer_commit is empty.
+requesting test write
+requesting test write
+Request 1 issue journal txe
+Request 8 issue write data z at 307
+write data complete
+Request 8 issue journal txb
+journal txb complete
+Request 8 issue journal bitmap x at 107
+journal bitmap complete
+Request 8 issue journal inode y at 207
+journal inode complete
+Request 9 issue write data z at 308
+write data complete
+Request 9 issue journal txb
+journal txb complete
+Request 9 issue journal bitmap x at 108
+journal bitmap complete
+Request 9 issue journal inode y at 208
+journal inode complete
+**Buffer buffer_metadata is full.** // This is when the metadata buffer (prior to txe fills up)
+**journal txe complete** // This is when txe finally completes
+Request 2 issue journal txe // Now the next txe can finally begin
+Request 1 issue write bitmap x at 100
+write bitmap complete
+Request 1 issue write inode y at 200
+write inode complete
+Request 1 test write complete
+Buffer buffer_commit is empty.
+Request 10 issue write data z at 309
+write data complete
+Request 10 issue journal txb
+journal txb complete
+Request 10 issue journal bitmap x at 109
+journal bitmap complete
+Request 10 issue journal inode y at 209
+journal inode complete
+Buffer buffer_metadata is full.
+journal txe complete
+Request 3 issue journal txe
+Request 2 issue write bitmap x at 101
+Buffer buffer_request is empty.
+write bitmap complete
+Request 2 issue write inode y at 201
+write inode complete
+Request 2 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 4 issue journal txe
+Request 3 issue write bitmap x at 102
+write bitmap complete
+Request 3 issue write inode y at 202
+write inode complete
+Request 3 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 5 issue journal txe
+Request 4 issue write bitmap x at 103
+write bitmap complete
+Request 4 issue write inode y at 203
+write inode complete
+Request 4 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 6 issue journal txe
+Request 5 issue write bitmap x at 104
+write bitmap complete
+Request 5 issue write inode y at 204
+write inode complete
+Request 5 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 7 issue journal txe
+Request 6 issue write bitmap x at 105
+write bitmap complete
+Request 6 issue write inode y at 205
+write inode complete
+Request 6 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 8 issue journal txe
+Request 7 issue write bitmap x at 106
+write bitmap complete
+Request 7 issue write inode y at 206
+write inode complete
+Request 7 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 9 issue journal txe
+Request 8 issue write bitmap x at 107
+write bitmap complete
+Request 8 issue write inode y at 207
+write inode complete
+Request 8 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Request 10 issue journal txe
+Request 9 issue write bitmap x at 108
+write bitmap complete
+Request 9 issue write inode y at 208
+write inode complete
+Request 9 test write complete
+Buffer buffer_commit is empty.
+journal txe complete
+Buffer buffer_metadata is empty.
+Request 10 issue write bitmap x at 109
+write bitmap complete
+Request 10 issue write inode y at 209
+write inode complete
+Request 10 test write complete
+Buffer buffer_commit is empty.
+----------------------------------------------
+
+As you can see from this example, the metadata buffer
+fills until the first (request 1's) txe is complete
+before request 2 can begin its txe write.

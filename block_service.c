@@ -23,9 +23,6 @@ void* sleep_thread(void* args) {
 
 void issue_journal_txb() {
 	printf("issue journal txb\n");
-
-	// pthread_t test;
-	// pthread_create(&test, NULL, sleep_thread, (void*)journal_txb_complete);
 	journal_txb_complete();
 }
 
@@ -46,7 +43,10 @@ void issue_write_data(char* data, int idx) {
 
 void issue_journal_txe() {
 	printf("issue journal txe\n");
-	journal_txe_complete();
+
+	pthread_t test;
+	pthread_create(&test, NULL, sleep_thread, (void*)journal_txe_complete);
+	// journal_txe_complete();
 }
 
 void issue_write_bitmap(char* bitmap, int idx) {
